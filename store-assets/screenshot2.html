@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    width: 1280px; height: 800px; overflow: hidden;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    background: linear-gradient(145deg, #e8f5f0 0%, #f4f6f8 60%);
+    display: flex; align-items: center; justify-content: center; gap: 80px;
+  }
+
+  /* Left: explanation */
+  .left { width: 460px; }
+  .left h2 { font-size: 32px; font-weight: 800; color: #111; margin-bottom: 16px; line-height: 1.3; }
+  .left p  { font-size: 16px; color: #555; line-height: 1.7; margin-bottom: 28px; }
+
+  .step-list { display: flex; flex-direction: column; gap: 16px; }
+  .step {
+    display: flex; align-items: flex-start; gap: 14px;
+    background: #fff; border-radius: 12px;
+    padding: 14px 16px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.07);
+  }
+  .step-num {
+    width: 28px; height: 28px; border-radius: 50%; flex-shrink: 0;
+    background: linear-gradient(135deg, #00b09b, #096);
+    color: #fff; font-size: 13px; font-weight: 700;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .step-text { font-size: 14px; color: #333; line-height: 1.5; }
+  .step-text strong { color: #111; }
+
+  /* Right: popup mockup */
+  .popup-wrap { position: relative; }
+  .popup-arrow {
+    position: absolute; right: -18px; top: 24px;
+    width: 0; height: 0;
+    border-top: 10px solid transparent;
+    border-bottom: 10px solid transparent;
+    border-left: 14px solid #e0e0e0;
+  }
+  .popup-arrow::after {
+    content: '';
+    position: absolute; left: -15px; top: -9px;
+    width: 0; height: 0;
+    border-top: 9px solid transparent;
+    border-bottom: 9px solid transparent;
+    border-left: 13px solid #fff;
+  }
+
+  .popup {
+    width: 280px;
+    background: #fff;
+    border-radius: 14px;
+    box-shadow: 0 16px 48px rgba(0,0,0,0.18);
+    overflow: hidden;
+    border: 1px solid #e0e0e0;
+  }
+  .popup-header {
+    background: linear-gradient(135deg, #00b09b, #096);
+    color: #fff; padding: 16px;
+    text-align: center;
+  }
+  .popup-header h1 { font-size: 16px; font-weight: 700; margin-bottom: 3px; }
+  .popup-header p  { font-size: 11px; opacity: 0.85; }
+
+  .popup-section { padding: 14px 16px; border-bottom: 1px solid #f0f0f0; }
+  .popup-row {
+    display: flex; justify-content: space-between;
+    align-items: center; margin-bottom: 8px;
+    font-size: 13px;
+  }
+  .popup-row:last-child { margin-bottom: 0; }
+  .popup-lbl { color: #666; }
+  .popup-val { font-weight: 600; }
+  .pos { color: #d4380d; }
+  .muted { color: #bbb; font-size: 11px; }
+
+  .popup-section-title {
+    font-size: 12px; color: #aaa; margin-bottom: 8px;
+  }
+
+  .refresh-btn {
+    display: block; width: calc(100% - 32px);
+    margin: 10px 16px 14px;
+    padding: 10px;
+    background: #f5f5f5;
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
+    font-size: 13px; color: #444;
+    text-align: center;
+  }
+
+  /* extension icon chip */
+  .icon-chip {
+    position: absolute; right: -60px; top: -20px;
+    display: flex; flex-direction: column; align-items: center; gap: 6px;
+  }
+  .ext-icon {
+    width: 48px; height: 48px; border-radius: 10px;
+    background: linear-gradient(135deg, #00b09b, #096);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 26px;
+    box-shadow: 0 4px 12px rgba(0,153,102,0.35);
+  }
+  .icon-label { font-size: 10px; color: #888; white-space: nowrap; }
+</style>
+</head>
+<body>
+
+<div class="left">
+  <h2>點一下圖示<br>立刻掌握 ETF 現況</h2>
+  <p>安裝後無需任何設定，瀏覽購物網站時自動生效。點擊工具列圖示可隨時查看 0050 最新數據與試算結果。</p>
+
+  <div class="step-list">
+    <div class="step">
+      <div class="step-num">1</div>
+      <div class="step-text"><strong>自動偵測</strong>所有購物網站上的價格數字</div>
+    </div>
+    <div class="step">
+      <div class="step-num">2</div>
+      <div class="step-text">即時換算成 <strong>0050 ETF 股數</strong>，顯示在價格旁</div>
+    </div>
+    <div class="step">
+      <div class="step-num">3</div>
+      <div class="step-text">滑鼠懸停查看 <strong>3 個月 / 1 年後</strong>的複利增值推估</div>
+    </div>
+    <div class="step">
+      <div class="step-num">4</div>
+      <div class="step-text">數據每小時自動更新，<strong>不儲存任何個人資料</strong></div>
+    </div>
+  </div>
+</div>
+
+<div style="position:relative;">
+  <div class="popup-wrap">
+    <div class="popup">
+      <div class="popup-header">
+        <h1>📈 0050 ETF 價值換算</h1>
+        <p>滑鼠懸停在網頁上的價格 ETF 標籤即可查看</p>
+      </div>
+
+      <div class="popup-section">
+        <div class="popup-row">
+          <span class="popup-lbl">0050 目前股價</span>
+          <span class="popup-val">NT$ 165.00</span>
+        </div>
+        <div class="popup-row">
+          <span class="popup-lbl">近 1 年年化報酬</span>
+          <span class="popup-val pos">+18.4%</span>
+        </div>
+        <div class="popup-row">
+          <span class="popup-lbl muted">資料更新時間</span>
+          <span class="muted">5/5 20:59</span>
+        </div>
+      </div>
+
+      <div class="popup-section">
+        <div class="popup-section-title">範例：花 NT$1,000 若改存 0050</div>
+        <div class="popup-row">
+          <span class="popup-lbl">可買股數</span>
+          <span class="popup-val">6.061 股</span>
+        </div>
+        <div class="popup-row">
+          <span class="popup-lbl">3 個月後約</span>
+          <span class="popup-val pos">NT$ 1,043</span>
+        </div>
+        <div class="popup-row">
+          <span class="popup-lbl">1 年後約</span>
+          <span class="popup-val pos">NT$ 1,184</span>
+        </div>
+      </div>
+
+      <div class="refresh-btn">🔄 重新抓取最新數據</div>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>

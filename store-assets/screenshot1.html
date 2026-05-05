@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    width: 1280px; height: 800px; overflow: hidden;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    background: #f4f6f8;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: 32px;
+  }
+
+  .headline {
+    text-align: center;
+  }
+  .headline h1 {
+    font-size: 38px; font-weight: 800; color: #111;
+    letter-spacing: -0.5px; margin-bottom: 10px;
+  }
+  .headline p { font-size: 18px; color: #555; }
+
+  /* Mock browser / shopping page */
+  .browser {
+    width: 900px;
+    background: #fff;
+    border-radius: 16px;
+    box-shadow: 0 16px 48px rgba(0,0,0,0.12);
+    overflow: hidden;
+  }
+  .browser-bar {
+    background: #f0f0f0;
+    padding: 10px 16px;
+    display: flex; align-items: center; gap: 8px;
+    border-bottom: 1px solid #ddd;
+  }
+  .dot { width: 12px; height: 12px; border-radius: 50%; }
+  .dot.r { background: #ff5f57; }
+  .dot.y { background: #febc2e; }
+  .dot.g { background: #28c840; }
+  .url-bar {
+    flex: 1; background: #fff; border-radius: 6px;
+    padding: 4px 12px; font-size: 13px; color: #555;
+    border: 1px solid #ddd;
+  }
+
+  .page-content {
+    padding: 28px 36px;
+    display: flex; gap: 32px; align-items: flex-start;
+  }
+  .product-img {
+    width: 200px; height: 200px;
+    background: linear-gradient(135deg, #e8f5e9, #c8e6c9);
+    border-radius: 12px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 64px; flex-shrink: 0;
+  }
+  .product-info { flex: 1; }
+  .product-title {
+    font-size: 20px; font-weight: 700; color: #111;
+    margin-bottom: 20px; line-height: 1.4;
+  }
+
+  /* Price row with badge */
+  .price-row { display: flex; align-items: center; gap: 0; margin-bottom: 12px; }
+  .price-main {
+    font-size: 36px; font-weight: 800; color: #e53935;
+    font-variant-numeric: tabular-nums;
+  }
+  .price-original {
+    font-size: 20px; color: #aaa; text-decoration: line-through;
+    margin-left: 14px;
+  }
+
+  /* ETF Badge */
+  .etf-badge {
+    display: inline-block;
+    background: linear-gradient(135deg, #00b09b, #096);
+    color: #fff;
+    font-size: 13px; font-weight: 700;
+    padding: 4px 11px;
+    border-radius: 12px;
+    margin-left: 10px;
+    white-space: nowrap;
+    box-shadow: 0 2px 6px rgba(0,153,102,0.4);
+  }
+
+  /* Tooltip */
+  .tooltip-demo {
+    position: absolute;
+    left: 600px; top: 320px;
+    width: 248px;
+    background: #fff;
+    border: 1px solid #e0e0e0;
+    border-radius: 12px;
+    box-shadow: 0 8px 28px rgba(0,0,0,0.16);
+    overflow: hidden;
+    font-size: 13px;
+  }
+  .tip-header {
+    background: linear-gradient(135deg, #00b09b, #096);
+    color: #fff; padding: 9px 13px;
+    display: flex; justify-content: space-between; align-items: center;
+    font-weight: 600;
+  }
+  .tip-body { padding: 11px 13px 9px; }
+  .tip-row {
+    display: flex; justify-content: space-between;
+    margin-bottom: 6px; font-size: 12px;
+  }
+  .tip-row .lbl { color: #777; }
+  .tip-row .val { font-weight: 600; }
+  .tip-row.future .val { font-weight: 800; font-size: 13px; color: #111; }
+  .tip-row .sub { font-size: 10px; color: #d4380d; display: block; text-align: right; }
+  .divider { border-top: 1px solid #f0f0f0; margin: 7px 0; }
+  .tip-foot {
+    background: #fafafa; border-top: 1px solid #f0f0f0;
+    padding: 5px 12px; font-size: 10px; color: #bbb; text-align: right;
+  }
+  .pos { color: #d4380d; }
+  .neg { color: #389e0d; }
+
+  .connector {
+    position: absolute;
+    left: 556px; top: 348px;
+    width: 44px; height: 2px;
+    background: linear-gradient(to right, transparent, #00b09b);
+    transform: rotate(-10deg);
+  }
+
+  /* Feature pills */
+  .features {
+    display: flex; gap: 16px; flex-wrap: wrap; justify-content: center;
+  }
+  .pill {
+    background: #fff;
+    border: 1px solid #e0e0e0;
+    border-radius: 24px;
+    padding: 8px 18px;
+    font-size: 14px; color: #333;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.06);
+    display: flex; align-items: center; gap: 7px;
+  }
+</style>
+</head>
+<body>
+
+<div class="headline">
+  <h1>📈 每個價格，都換算成 0050 股數</h1>
+  <p>購物前先想想：這筆錢存進 ETF，1 年後會變多少？</p>
+</div>
+
+<div style="position:relative; width:900px;">
+  <div class="browser">
+    <div class="browser-bar">
+      <div class="dot r"></div><div class="dot y"></div><div class="dot g"></div>
+      <div class="url-bar">🔒 shop.example.com/product/macbook-air</div>
+    </div>
+    <div class="page-content">
+      <div class="product-img">💻</div>
+      <div class="product-info">
+        <div class="product-title">Apple MacBook Air 13吋 M3 晶片<br>8GB 記憶體 / 256GB SSD</div>
+
+        <div class="price-row">
+          <span class="price-main">$35,900</span>
+          <span class="etf-badge">≈217.58股</span>
+          <span class="price-original">$37,900</span>
+          <span class="etf-badge">≈229.70股</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Tooltip shown floating -->
+  <div class="connector"></div>
+  <div class="tooltip-demo">
+    <div class="tip-header">
+      <span>📈 0050 ETF</span>
+      <span style="font-size:11px;opacity:.9">股價 NT$165.0</span>
+    </div>
+    <div class="tip-body">
+      <div class="tip-row">
+        <span class="lbl">近1年年化報酬</span>
+        <span class="val pos">+18.4%</span>
+      </div>
+      <div class="tip-row">
+        <span class="lbl">等值股數</span>
+        <span class="val">217.576 股</span>
+      </div>
+      <div class="divider"></div>
+      <div class="tip-row future">
+        <span class="lbl">3 個月後約</span>
+        <span class="val">NT$ 37,476<span class="sub pos">+NT$ 1,576</span></span>
+      </div>
+      <div class="tip-row future">
+        <span class="lbl">1 年後約</span>
+        <span class="val">NT$ 42,506<span class="sub pos">+NT$ 6,606</span></span>
+      </div>
+    </div>
+    <div class="tip-foot">更新：5/5 20:59</div>
+  </div>
+</div>
+
+<div class="features">
+  <div class="pill">🌐 所有購物網站自動生效</div>
+  <div class="pill">📊 即時抓取 Yahoo Finance 數據</div>
+  <div class="pill">🔄 每小時自動更新</div>
+  <div class="pill">🔒 不收集任何個人資料</div>
+</div>
+
+</body>
+</html>

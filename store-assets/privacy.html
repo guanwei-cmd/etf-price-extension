@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>隱私權政策 — 0050 ETF 價值換算</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      max-width: 720px; margin: 48px auto; padding: 0 24px;
+      color: #222; line-height: 1.8; font-size: 15px;
+    }
+    h1 { font-size: 24px; font-weight: 800; margin-bottom: 6px; }
+    h2 { font-size: 17px; font-weight: 700; margin: 32px 0 8px; color: #111; }
+    p, li { color: #444; }
+    ul { padding-left: 20px; }
+    li { margin-bottom: 4px; }
+    .meta { font-size: 13px; color: #999; margin-bottom: 40px; }
+    .highlight {
+      background: #f0faf7; border-left: 4px solid #00b09b;
+      padding: 12px 16px; border-radius: 0 8px 8px 0;
+      margin: 16px 0; font-weight: 600; color: #096;
+    }
+    a { color: #00b09b; }
+    hr { border: none; border-top: 1px solid #eee; margin: 40px 0; }
+    footer { font-size: 12px; color: #bbb; margin-top: 40px; }
+  </style>
+</head>
+<body>
+
+  <h1>隱私權政策</h1>
+  <p class="meta">適用擴充功能：0050 ETF 價值換算（Chrome Web Store）<br>最後更新：2026 年 5 月</p>
+
+  <div class="highlight">
+    本擴充功能不會收集、儲存或傳送任何個人識別資料或瀏覽記錄。
+  </div>
+
+  <h2>1. 收集的資料</h2>
+  <p>本擴充功能<strong>不收集</strong>任何使用者個人資料，包括但不限於：</p>
+  <ul>
+    <li>瀏覽歷史紀錄</li>
+    <li>網頁內容或表單輸入</li>
+    <li>個人識別資訊（姓名、Email、IP 位址等）</li>
+    <li>財務資料或交易紀錄</li>
+  </ul>
+
+  <h2>2. 本地儲存（chrome.storage）</h2>
+  <p>本擴充功能使用 <code>chrome.storage.local</code> 與 <code>chrome.storage.sync</code> 僅儲存以下內容，且資料完全保留在使用者裝置上：</p>
+  <ul>
+    <li><strong>股票代號偏好設定</strong>（例如 0050.TW）</li>
+    <li><strong>啟用／停用狀態</strong></li>
+    <li><strong>股價快取資料</strong>（來自 Yahoo Finance，每小時更新，僅含股價與報酬率數值）</li>
+  </ul>
+  <p>上述資料不包含任何個人資訊，且不會傳送至任何伺服器。</p>
+
+  <h2>3. 第三方 API 請求</h2>
+  <p>本擴充功能會向 <a href="https://finance.yahoo.com" target="_blank">Yahoo Finance</a>（<code>query1.finance.yahoo.com</code>）發出 HTTPS 請求，以取得股票歷史價格資料。此請求由使用者瀏覽器直接發出，</p>
+  <ul>
+    <li>請求內容僅包含股票代號（如 <code>0050.TW</code>），不含任何使用者識別資訊</li>
+    <li>本擴充功能不會攔截或記錄此請求的回應內容</li>
+    <li>Yahoo Finance 的隱私權政策請參閱其官方說明</li>
+  </ul>
+
+  <h2>4. 網頁存取權限</h2>
+  <p>本擴充功能的 content script 需要在所有網頁上執行，以偵測頁面上的價格元素並顯示換算標籤。擴充功能：</p>
+  <ul>
+    <li>僅讀取頁面 DOM 中的價格文字，用於計算換算結果</li>
+    <li>不讀取、不記錄、不傳送任何其他頁面內容</li>
+    <li>不存取使用者輸入的表單資料、帳號密碼或個人資訊</li>
+  </ul>
+
+  <h2>5. 資料分享</h2>
+  <p>本擴充功能不與任何第三方分享使用者資料，亦不用於廣告追蹤或行為分析目的。</p>
+
+  <h2>6. 未成年人</h2>
+  <p>本擴充功能不針對 13 歲以下兒童設計，亦不故意收集兒童個人資料。</p>
+
+  <h2>7. 政策變更</h2>
+  <p>若本隱私權政策有所變更，將更新本頁面的「最後更新」日期。建議使用者定期查閱本頁。</p>
+
+  <h2>8. 聯絡方式</h2>
+  <p>如對本隱私權政策有任何疑問，歡迎透過 Chrome Web Store 開發者頁面的聯絡功能與我們聯繫。</p>
+
+  <hr>
+
+  <footer>
+    本政策適用於「0050 ETF 價值換算」Chrome 擴充功能。<br>
+    © 2026 個人開發者。本擴充功能為非商業性個人專案。
+  </footer>
+
+</body>
+</html>
