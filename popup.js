@@ -85,9 +85,11 @@ function renderData(data) {
     return;
   }
 
-  const { displayName, currency, currentPrice, annualReturn, updatedAt, isFallback } = data;
-  const isTWD = currency === 'TWD';
-  const fmt = n => (isTWD ? 'NT$' : '$') + Math.round(n).toLocaleString();
+  const { displayName, currency, currentPrice, annualReturn, updatedAt, isFallback, exchangeRate } = data;
+  const isUSD = currency === 'USD';
+  const effectivePrice = isUSD ? currentPrice * (exchangeRate || 32.5) : currentPrice;
+
+  const fmt = n => 'NT$' + Math.round(n).toLocaleString();
   const pct = (annualReturn * 100).toFixed(1);
   const sign = annualReturn >= 0 ? '+' : '';
   const cls  = annualReturn >= 0 ? 'pos' : 'neg';
@@ -95,21 +97,28 @@ function renderData(data) {
     ? new Date(updatedAt).toLocaleString('zh-TW', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })
     : '—';
 
-  const priceLabel = isTWD ? `NT$ ${currentPrice.toFixed(2)}` : `$ ${currentPrice.toFixed(2)}`;
+  const priceLabel = isUSD
+    ? `$ ${currentPrice.toFixed(2)} <small style="display:block;color:#999;font-weight:400;margin-top:2px;">(約 NT$ ${effectivePrice.toFixed(1)})</small>`
+    : `NT$ ${currentPrice.toFixed(2)}`;
 
-  // Example: 1000 TWD or 1000 (same currency)
+  // Example: 1000 TWD
   const example = 1000;
-  const exampleLabel = isTWD ? 'NT$1,000' : '$1,000';
-  const shares = (example / currentPrice).toFixed(3);
+  const exampleLabel = 'NT$1,000';
+  const shares = (example / effectivePrice).toFixed(3);
   const val3m  = example * Math.pow(1 + annualReturn, 3 / 12);
   const val1y  = example * (1 + annualReturn);
 
   mainEl.innerHTML = `
     <div class="section">
-      <div class="row">
+      <div class="row" style="align-items: flex-start;">
         <span class="label">${displayName || displayTicker(currentTicker)}<small style="color:#bbb;font-size:11px;margin-left:5px;font-weight:400">${displayTicker(currentTicker)}</small></span>
-        <span class="value">${priceLabel}</span>
+        <span class="value" style="text-align: right;">${priceLabel}</span>
       </div>
+      ${isUSD && exchangeRate ? `
+      <div class="row">
+        <span class="label muted">USD/TWD 匯率</span>
+        <span class="muted">${exchangeRate.toFixed(2)}</span>
+      </div>` : ''}
       <div class="row">
         <span class="label">近 1 年年化報酬</span>
         <span class="value ${cls}">${sign}${pct}%</span>

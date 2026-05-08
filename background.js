@@ -1,5 +1,28 @@
 const CACHE_TTL = 60 * 60 * 1000; // 1 hour
 const DEFAULT_TICKER = '0050.TW';
+const EXCH_RATE_CACHE_TTL = 12 * 60 * 60 * 1000; // 12 hours
+
+async function fetchExchangeRate() {
+  const cacheKey = 'usd_twd_rate';
+  const stored = await chrome.storage.local.get(cacheKey);
+  const cached = stored[cacheKey];
+  if (cached && Date.now() - cached.timestamp < EXCH_RATE_CACHE_TTL) return cached.rate;
+
+  try {
+    const url = `https://query1.finance.yahoo.com/v8/finance/chart/USDTWD=X?interval=1d&range=1d`;
+    const resp = await fetch(url, { headers: { 'User-Agent': 'Mozilla/5.0' } });
+    if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+    const json = await resp.json();
+    const rate = json.chart.result?.[0]?.meta?.regularMarketPrice;
+    if (!rate) throw new Error('No rate returned');
+
+    await chrome.storage.local.set({ [cacheKey]: { rate, timestamp: Date.now() } });
+    return rate;
+  } catch (e) {
+    if (cached) return cached.rate;
+    return 32.5; // Final fallback
+  }
+}
 
 // Chinese name lookup for common TW stocks/ETFs
 const ZH_NAMES = {
@@ -109,9 +132,19 @@ const ZH_NAMES = {
   '2892.TW': '第一金',
 };
 
-// Best display name: ZH lookup > longName (if has CJK) > title-cased shortName
+// Chinese name lookup for common US ETFs
+const US_ZH_NAMES = {
+  'QQQ': 'Invesco納斯達克100指數ETF',
+  'SPY': 'SPDR標普500指數ETF',
+  'VOO': 'Vanguard標普500指數ETF',
+  'VT': 'Vanguard全世界股票ETF',
+  'VTI': 'Vanguard全美國股票ETF',
+};
+
+// Best display name: TW lookup > US lookup > longName (if has CJK) > title-cased shortName
 function resolveName(ticker, shortName, longName) {
   if (ZH_NAMES[ticker]) return ZH_NAMES[ticker];
+  if (US_ZH_NAMES[ticker]) return US_ZH_NAMES[ticker];
   // Use longName if it contains CJK characters
   if (longName && /[一-鿿]/.test(longName)) return longName;
   // Title-case the English name (e.g. "CATHAY SECS INV TRUST" → "Cathay Secs Inv Trust")
@@ -137,7 +170,12 @@ async function fetchStockData(rawTicker, forceRefresh = false) {
   if (!forceRefresh) {
     const stored = await chrome.storage.local.get(cacheKey);
     const cached = stored[cacheKey];
-    if (cached && Date.now() - cached.timestamp < CACHE_TTL) return cached;
+    if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
+      if (cached.currency === 'USD') {
+        cached.exchangeRate = await fetchExchangeRate();
+      }
+      return cached;
+    }
   }
 
   let staleCache = null;
@@ -166,10 +204,20 @@ async function fetchStockData(rawTicker, forceRefresh = false) {
     const displayName = resolveName(ticker, meta.shortName, meta.longName);
 
     const data = { ticker, displayName, currency, currentPrice, annualReturn, updatedAt: Date.now(), timestamp: Date.now() };
+
+    if (currency === 'USD') {
+      data.exchangeRate = await fetchExchangeRate();
+    }
+
     await chrome.storage.local.set({ [cacheKey]: data });
     return data;
   } catch (e) {
-    if (staleCache) return staleCache;
+    if (staleCache) {
+      if (staleCache.currency === 'USD') {
+        staleCache.exchangeRate = await fetchExchangeRate();
+      }
+      return staleCache;
+    }
     // Hardcoded fallback only for default ticker
     if (ticker === DEFAULT_TICKER) {
       return { ticker, displayName: '元大台灣50', currency: 'TWD', currentPrice: 165, annualReturn: 0.15, updatedAt: 0, timestamp: Date.now(), isFallback: true };

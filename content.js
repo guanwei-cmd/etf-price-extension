@@ -41,10 +41,12 @@
 
   function showTooltip(badge, price, data) {
     clearTimeout(hideTimer);
-    const { displayName, ticker, currency, currentPrice, annualReturn, updatedAt, isFallback } = data;
-    const isTWD = currency === 'TWD';
-    const fmt = n => (isTWD ? 'NT$ ' : '$ ') + Math.round(n).toLocaleString();
-    const shares = price / currentPrice;
+    const { displayName, ticker, currency, currentPrice, annualReturn, updatedAt, isFallback, exchangeRate } = data;
+    const isUSD = currency === 'USD';
+    const effectivePrice = isUSD ? currentPrice * (exchangeRate || 32.5) : currentPrice;
+
+    const fmt = n => 'NT$ ' + Math.round(n).toLocaleString();
+    const shares = price / effectivePrice;
     const r3m = price * (Math.pow(1 + annualReturn, 3 / 12) - 1);
     const r1y = price * annualReturn;
     const pct = (annualReturn * 100).toFixed(1);
@@ -54,7 +56,9 @@
       ? new Date(updatedAt).toLocaleString('zh-TW', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' })
       : '—';
     const code = ticker.replace('.TW', '');
-    const priceStr = isTWD ? `NT$${currentPrice.toFixed(1)}` : `$${currentPrice.toFixed(2)}`;
+    const priceStr = isUSD
+      ? `$${currentPrice.toFixed(2)} (約 NT$${effectivePrice.toFixed(1)})`
+      : `NT$${currentPrice.toFixed(1)}`;
 
     globalTip.innerHTML = `
       <div class="etf-tip-header">
@@ -83,7 +87,10 @@
           <span class="etf-tip-value">${fmt(price + r1y)}<small class="${cls(r1y)}">${s(r1y)}${fmt(r1y)}</small></span>
         </div>
       </div>
-      <div class="etf-tip-footer">${isFallback ? '⚠️ 使用預設數值' : `更新：${updatedStr}`}</div>
+      <div class="etf-tip-footer">
+        ${isUSD && exchangeRate ? `匯率：${exchangeRate.toFixed(2)} | ` : ''}
+        ${isFallback ? '⚠️ 使用預設數值' : `更新：${updatedStr}`}
+      </div>
     `;
 
     globalTip.style.visibility = 'hidden';
@@ -171,9 +178,12 @@
     el.setAttribute(PROCESSED_ATTR, '1');
     markAncestors(el);
 
+    const { currency, currentPrice, exchangeRate } = data;
+    const effectivePrice = currency === 'USD' ? currentPrice * (exchangeRate || 32.5) : currentPrice;
+
     const badge = document.createElement('span');
     badge.className = 'etf-badge';
-    badge.textContent = `≈${(price / data.currentPrice).toFixed(2)}股`;
+    badge.textContent = `≈${(price / effectivePrice).toFixed(2)}股`;
     badge.addEventListener('mouseenter', () => showTooltip(badge, price, data));
     badge.addEventListener('mouseleave', () => hideTooltip());
 
