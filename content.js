@@ -9,8 +9,11 @@
     '[data-price]', '[itemprop="price"]',
     '.price', '.special-price', '.regular-price',
     '.pricebox', '.goodsPrice',
+    '.prdPrice', '.prd-price', '.productPrice',
     '._3_ISdg', '.shopee-price',
     '[class*="prod-price"]',
+    '[class*="prdPrice"]', '[class*="goodsPrice"]',
+    '[class*="salePrice"]', '[class*="SalePrice"]',
     '.sale-price', '.item-price', '.price-info',
     // Apple
     '[data-autom*="price"]', '[data-autom*="Price"]',
@@ -18,12 +21,14 @@
     '[class*="current-price"]', '[class*="currentprice"]',
   ].join(',');
 
-  // For text-node scanning: require explicit currency prefix to avoid false positives
-  const TEXTNODE_PRICE_RE = /^(?:NT\$?|NTD|HK\$?|\$|USD|EUR|JPY¥?|¥)\s*[\d,]{2,}(?:\.\d{1,2})?$/i;
+  // For text-node scanning: require explicit currency prefix except on known TW shopping sites.
+  const TEXTNODE_PRICE_RE = /^(?:NT\$?|NTD|HK\$?|US\$|\$|USD|EUR|JPY¥?|¥)\s*[\d,]{2,}(?:\.\d{1,2})?$|^[\d,]{2,}(?:\.\d{1,2})?\s*(?:元)$/i;
+  const TW_SHOP_HOST_RE = /(^|\.)((momo|momoshop|pchome|ruten|books|rakuten|yahoo|etmall|friday|costco|watsons|cosmed)\.com\.tw|shopee\.tw)$/i;
 
   const PROCESSED_ATTR = 'data-etf-done';
   const IGNORED_TAGS = new Set(['SCRIPT', 'STYLE', 'NOSCRIPT', 'TEXTAREA', 'INPUT', 'SELECT']);
-  const PRICE_TEXT_RE = /^(?:NT\$?|NTD|\$|USD)?\s*([\d,]{1,10}(?:\.\d{1,2})?)\s*(?:元|円|TWD)?$/i;
+  const PRICE_TEXT_RE = /^(NT\$?|NTD|TWD|US\$|USD|\$)?\s*([\d,]{1,10}(?:\.\d{1,2})?)\s*(元|円|TWD|USD)?$/i;
+  const PRICE_LABEL_RE = /^(特價標|特價|優惠價|促銷價|售價|網路價|會員價|折扣價)[:：]?/;
   const ORIGINAL_PRICE_RE = /origin|original|old[\-_]?price|list[\-_]?price|market[\-_]?price|was[\-_]?price|strike|del[\-_]?price|定價|原價/i;
   const TOOLTIP_W = 260;
   const TOOLTIP_GAP = 8;
@@ -39,14 +44,15 @@
   document.body.appendChild(globalTip);
   let hideTimer = null;
 
-  function showTooltip(badge, price, data) {
+  function showTooltip(badge, priceInfo, data) {
     clearTimeout(hideTimer);
     const { displayName, ticker, currency, currentPrice, annualReturn, updatedAt, isFallback } = data;
-    const isTWD = currency === 'TWD';
-    const fmt = n => (isTWD ? 'NT$ ' : '$ ') + Math.round(n).toLocaleString();
-    const shares = price / currentPrice;
-    const r3m = price * (Math.pow(1 + annualReturn, 3 / 12) - 1);
-    const r1y = price * annualReturn;
+    const priceCurrency = priceInfo.currency || inferPageCurrency(priceInfo.rawText);
+    const quotePrice = convertQuotePrice(data, priceCurrency);
+    const fmt = n => formatMoney(n, priceCurrency);
+    const shares = quotePrice ? priceInfo.amount / quotePrice : 0;
+    const r3m = priceInfo.amount * (Math.pow(1 + annualReturn, 3 / 12) - 1);
+    const r1y = priceInfo.amount * annualReturn;
     const pct = (annualReturn * 100).toFixed(1);
     const s = n => n >= 0 ? '+' : '';
     const cls = n => n >= 0 ? 'pos' : 'neg';
@@ -54,7 +60,12 @@
       ? new Date(updatedAt).toLocaleString('zh-TW', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' })
       : '—';
     const code = ticker.replace('.TW', '');
-    const priceStr = isTWD ? `NT$${currentPrice.toFixed(1)}` : `$${currentPrice.toFixed(2)}`;
+    const priceStr = quotePrice
+      ? `${formatMoney(quotePrice, priceCurrency)} / 股`
+      : `${formatMoney(currentPrice, currency)} / 股`;
+    const fxNote = currency !== priceCurrency && data.fxToTWD
+      ? `，已用 USD/TWD ${data.fxToTWD.toFixed(2)} 換算`
+      : '';
 
     globalTip.innerHTML = `
       <div class="etf-tip-header">
@@ -76,14 +87,14 @@
         <div class="etf-tip-divider"></div>
         <div class="etf-tip-row future">
           <span class="etf-tip-label">3 個月後約</span>
-          <span class="etf-tip-value">${fmt(price + r3m)}<small class="${cls(r3m)}">${s(r3m)}${fmt(r3m)}</small></span>
+          <span class="etf-tip-value">${fmt(priceInfo.amount + r3m)}<small class="${cls(r3m)}">${s(r3m)}${fmt(r3m)}</small></span>
         </div>
         <div class="etf-tip-row future">
           <span class="etf-tip-label">1 年後約</span>
-          <span class="etf-tip-value">${fmt(price + r1y)}<small class="${cls(r1y)}">${s(r1y)}${fmt(r1y)}</small></span>
+          <span class="etf-tip-value">${fmt(priceInfo.amount + r1y)}<small class="${cls(r1y)}">${s(r1y)}${fmt(r1y)}</small></span>
         </div>
       </div>
-      <div class="etf-tip-footer">${isFallback ? '⚠️ 使用預設數值' : `更新：${updatedStr}`}</div>
+      <div class="etf-tip-footer">${isFallback ? '⚠️ 使用預設數值' : `更新：${updatedStr}${fxNote}`}</div>
     `;
 
     globalTip.style.visibility = 'hidden';
@@ -111,12 +122,62 @@
   globalTip.addEventListener('mouseleave', () => hideTooltip());
 
   // --- Price helpers ---
+  function inferPageCurrency(text = '') {
+    const normalized = text.toUpperCase();
+    if (/US\$|USD/.test(normalized)) return 'USD';
+    if (/NT\$?|NTD|TWD|元/.test(normalized)) return 'TWD';
+    if (TW_SHOP_HOST_RE.test(location.hostname)) return 'TWD';
+    return normalized.includes('$') ? 'USD' : 'TWD';
+  }
+
+  function normalizeCurrency(prefix, suffix, rawText) {
+    const token = `${prefix || ''} ${suffix || ''}`.toUpperCase();
+    if (/US\$|USD/.test(token)) return 'USD';
+    if (/NT\$?|NTD|TWD|元/.test(token)) return 'TWD';
+    return inferPageCurrency(rawText);
+  }
+
   function parsePrice(text) {
-    const m = PRICE_TEXT_RE.exec(text.trim().replace(/\s+/g, ''));
+    const rawText = text.trim();
+    const normalizedText = rawText.replace(/\s+/g, '').replace(PRICE_LABEL_RE, '');
+    const m = PRICE_TEXT_RE.exec(normalizedText);
     if (!m) return null;
-    const val = parseFloat(m[1].replace(/,/g, ''));
+    const val = parseFloat(m[2].replace(/,/g, ''));
     if (isNaN(val) || val < 50 || val > 5_000_000) return null;
-    return val;
+    return { amount: val, currency: normalizeCurrency(m[1], m[3], rawText), rawText };
+  }
+
+  function isTextNodePrice(text) {
+    if (TEXTNODE_PRICE_RE.test(text)) return true;
+    if (!TW_SHOP_HOST_RE.test(location.hostname)) return false;
+    const normalizedText = text.replace(/\s+/g, '').replace(PRICE_LABEL_RE, '');
+    return /^\$?[\d,]{2,}(?:\.\d{1,2})?(?:元)?$/.test(normalizedText);
+  }
+
+  function fxToTWD(currency, data) {
+    const normalized = (currency || 'TWD').toUpperCase();
+    if (normalized === 'TWD') return 1;
+    if (normalized === 'USD') return data.fxToTWD || null;
+    return null;
+  }
+
+  function convertAmount(amount, fromCurrency, toCurrency, data) {
+    const from = (fromCurrency || 'TWD').toUpperCase();
+    const to = (toCurrency || 'TWD').toUpperCase();
+    if (from === to) return amount;
+    const fromRate = fxToTWD(from, data);
+    const toRate = fxToTWD(to, data);
+    if (!fromRate || !toRate) return null;
+    return amount * fromRate / toRate;
+  }
+
+  function convertQuotePrice(data, targetCurrency) {
+    return convertAmount(data.currentPrice, data.currency, targetCurrency, data);
+  }
+
+  function formatMoney(n, currency) {
+    const symbol = currency === 'TWD' ? 'NT$ ' : '$ ';
+    return symbol + Math.round(n).toLocaleString();
   }
 
   // --- Data loading ---
@@ -147,7 +208,7 @@
   function isEligible(el) {
     if (IGNORED_TAGS.has(el.tagName)) return false;
     if (el.hasAttribute(PROCESSED_ATTR)) return false;
-    if (el.querySelector('[' + PROCESSED_ATTR + ']')) return false;
+    if (el.closest('#etf-global-tooltip, .etf-wrap')) return false;
     if (isStrikethrough(el)) return false;
     if (ORIGINAL_PRICE_RE.test((el.className || '') + ' ' + (el.id || ''))) return false;
     return true;
@@ -158,23 +219,16 @@
   }
 
   // --- Badge ---
-  function markAncestors(el) {
-    let cur = el.parentElement;
-    for (let i = 0; i < 6 && cur && cur !== document.body; i++, cur = cur.parentElement) {
-      if (cur.hasAttribute(PROCESSED_ATTR)) break;
-      cur.setAttribute(PROCESSED_ATTR, 'ancestor');
-    }
-  }
-
-  function injectBadge(el, price, data) {
+  function injectBadge(el, priceInfo, data) {
     if (el.hasAttribute(PROCESSED_ATTR)) return;
+    const quotePrice = convertQuotePrice(data, priceInfo.currency);
+    if (!quotePrice) return;
     el.setAttribute(PROCESSED_ATTR, '1');
-    markAncestors(el);
 
     const badge = document.createElement('span');
     badge.className = 'etf-badge';
-    badge.textContent = `≈${(price / data.currentPrice).toFixed(2)}股`;
-    badge.addEventListener('mouseenter', () => showTooltip(badge, price, data));
+    badge.textContent = `≈${(priceInfo.amount / quotePrice).toFixed(2)}股`;
+    badge.addEventListener('mouseenter', () => showTooltip(badge, priceInfo, data));
     badge.addEventListener('mouseleave', () => hideTooltip());
 
     const wrap = document.createElement('span');
@@ -226,7 +280,7 @@
           if (p.closest('#etf-global-tooltip, .etf-wrap')) return NodeFilter.FILTER_REJECT;
           if (p.hasAttribute(PROCESSED_ATTR)) return NodeFilter.FILTER_REJECT;
           const text = node.textContent.trim();
-          return TEXTNODE_PRICE_RE.test(text) ? NodeFilter.FILTER_ACCEPT : NodeFilter.FILTER_SKIP;
+          return isTextNodePrice(text) ? NodeFilter.FILTER_ACCEPT : NodeFilter.FILTER_SKIP;
         }
       }
     );

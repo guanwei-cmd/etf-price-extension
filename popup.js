@@ -85,9 +85,10 @@ function renderData(data) {
     return;
   }
 
-  const { displayName, currency, currentPrice, annualReturn, updatedAt, isFallback } = data;
+  const { displayName, currency, currentPrice, annualReturn, fxToTWD, updatedAt, isFallback } = data;
   const isTWD = currency === 'TWD';
-  const fmt = n => (isTWD ? 'NT$' : '$') + Math.round(n).toLocaleString();
+  const quotePriceTWD = isTWD ? currentPrice : (fxToTWD ? currentPrice * fxToTWD : null);
+  const fmt = n => 'NT$' + Math.round(n).toLocaleString();
   const pct = (annualReturn * 100).toFixed(1);
   const sign = annualReturn >= 0 ? '+' : '';
   const cls  = annualReturn >= 0 ? 'pos' : 'neg';
@@ -95,12 +96,14 @@ function renderData(data) {
     ? new Date(updatedAt).toLocaleString('zh-TW', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })
     : '—';
 
-  const priceLabel = isTWD ? `NT$ ${currentPrice.toFixed(2)}` : `$ ${currentPrice.toFixed(2)}`;
+  const priceLabel = isTWD
+    ? `NT$ ${currentPrice.toFixed(2)}`
+    : `$ ${currentPrice.toFixed(2)}${quotePriceTWD ? ` / 約 NT$ ${Math.round(quotePriceTWD).toLocaleString()}` : ''}`;
 
-  // Example: 1000 TWD or 1000 (same currency)
+  // Example uses TWD so US stocks are compared with Taiwan shopping prices consistently.
   const example = 1000;
-  const exampleLabel = isTWD ? 'NT$1,000' : '$1,000';
-  const shares = (example / currentPrice).toFixed(3);
+  const exampleLabel = 'NT$1,000';
+  const shares = quotePriceTWD ? (example / quotePriceTWD).toFixed(3) : '—';
   const val3m  = example * Math.pow(1 + annualReturn, 3 / 12);
   const val1y  = example * (1 + annualReturn);
 
@@ -118,6 +121,10 @@ function renderData(data) {
         <span class="label muted">資料更新</span>
         <span class="muted">${updatedStr}</span>
       </div>
+      ${!isTWD && fxToTWD ? `<div class="row">
+        <span class="label muted">匯率換算</span>
+        <span class="muted">USD/TWD ${fxToTWD.toFixed(2)}</span>
+      </div>` : ''}
       ${isFallback ? '<div class="fallback-warn">⚠️ 無法連線 Yahoo Finance，顯示預設數值</div>' : ''}
     </div>
     <div class="section">

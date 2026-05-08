@@ -1,4 +1,5 @@
 const CACHE_TTL = 60 * 60 * 1000; // 1 hour
+const FX_CACHE_TTL = 6 * 60 * 60 * 1000; // 6 hours
 const DEFAULT_TICKER = '0050.TW';
 
 // Chinese name lookup for common TW stocks/ETFs
@@ -130,6 +131,43 @@ function normalizeTicker(input) {
   return t; // US/other (SPY, QQQ, AAPL …)
 }
 
+async function fetchYahooCloses(symbol, range = '5d') {
+  const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}?interval=1d&range=${range}`;
+  const resp = await fetch(url, { headers: { 'User-Agent': 'Mozilla/5.0' } });
+  if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+  const json = await resp.json();
+
+  const result = json.chart.result?.[0];
+  if (!result) throw new Error('No data returned');
+
+  const closes = result.indicators.quote[0].close.filter(v => v != null);
+  if (!closes.length) throw new Error('Not enough data points');
+  return { result, closes };
+}
+
+async function fetchFxToTWD(currency, forceRefresh = false) {
+  const from = (currency || 'TWD').toUpperCase();
+  if (from === 'TWD') return 1;
+  if (from !== 'USD') return null;
+
+  const cacheKey = `fx_to_twd_${from}`;
+  if (!forceRefresh) {
+    const stored = await chrome.storage.local.get(cacheKey);
+    const cached = stored[cacheKey];
+    if (cached && Date.now() - cached.timestamp < FX_CACHE_TTL) return cached.rate;
+  }
+
+  try {
+    const { closes } = await fetchYahooCloses('USDTWD=X', '5d');
+    const rate = closes[closes.length - 1];
+    await chrome.storage.local.set({ [cacheKey]: { rate, timestamp: Date.now() } });
+    return rate;
+  } catch (_) {
+    const stored = await chrome.storage.local.get(cacheKey);
+    return stored[cacheKey]?.rate || null;
+  }
+}
+
 async function fetchStockData(rawTicker, forceRefresh = false) {
   const ticker = normalizeTicker(rawTicker);
   const cacheKey = `stock_data_${ticker}`;
@@ -137,7 +175,9 @@ async function fetchStockData(rawTicker, forceRefresh = false) {
   if (!forceRefresh) {
     const stored = await chrome.storage.local.get(cacheKey);
     const cached = stored[cacheKey];
-    if (cached && Date.now() - cached.timestamp < CACHE_TTL) return cached;
+    if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
+      if (cached.currency === 'TWD' || cached.fxToTWD) return cached;
+    }
   }
 
   let staleCache = null;
@@ -147,15 +187,7 @@ async function fetchStockData(rawTicker, forceRefresh = false) {
   } catch (_) {}
 
   try {
-    const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(ticker)}?interval=1d&range=1y`;
-    const resp = await fetch(url, { headers: { 'User-Agent': 'Mozilla/5.0' } });
-    if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
-    const json = await resp.json();
-
-    const result = json.chart.result?.[0];
-    if (!result) throw new Error('No data returned');
-
-    const closes = result.indicators.quote[0].close.filter(v => v != null);
+    const { result, closes } = await fetchYahooCloses(ticker, '1y');
     if (closes.length < 2) throw new Error('Not enough data points');
 
     const currentPrice = closes[closes.length - 1];
@@ -164,15 +196,21 @@ async function fetchStockData(rawTicker, forceRefresh = false) {
     const meta = result.meta || {};
     const currency = meta.currency || (ticker.endsWith('.TW') ? 'TWD' : 'USD');
     const displayName = resolveName(ticker, meta.shortName, meta.longName);
+    const fxToTWD = await fetchFxToTWD(currency, forceRefresh);
 
-    const data = { ticker, displayName, currency, currentPrice, annualReturn, updatedAt: Date.now(), timestamp: Date.now() };
+    const data = { ticker, displayName, currency, currentPrice, annualReturn, fxToTWD, updatedAt: Date.now(), timestamp: Date.now() };
     await chrome.storage.local.set({ [cacheKey]: data });
     return data;
   } catch (e) {
-    if (staleCache) return staleCache;
+    if (staleCache) {
+      if (staleCache.currency !== 'TWD' && !staleCache.fxToTWD) {
+        staleCache.fxToTWD = await fetchFxToTWD(staleCache.currency, false);
+      }
+      return staleCache;
+    }
     // Hardcoded fallback only for default ticker
     if (ticker === DEFAULT_TICKER) {
-      return { ticker, displayName: '元大台灣50', currency: 'TWD', currentPrice: 165, annualReturn: 0.15, updatedAt: 0, timestamp: Date.now(), isFallback: true };
+      return { ticker, displayName: '元大台灣50', currency: 'TWD', currentPrice: 165, annualReturn: 0.15, fxToTWD: 1, updatedAt: 0, timestamp: Date.now(), isFallback: true };
     }
     throw e;
   }

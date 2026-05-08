@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "0050 ETF 價值換算",
-  "version": "1.0",
+  "version": "1.0.1",
   "description": "在購物網站價格旁顯示等值 0050 ETF 股數，以及依年化報酬率推估的 3 個月後和 1 年後價值",
   "permissions": ["storage"],
   "host_permissions": [
