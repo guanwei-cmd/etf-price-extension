@@ -1,0 +1,400 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ETF 價值換算 — 購物前先算清楚</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --green: #00b09b;
+    --dark-green: #007a6a;
+    --text: #111;
+    --muted: #666;
+    --light: #f4f7f6;
+    --white: #fff;
+    --red: #d4380d;
+  }
+
+  html { scroll-behavior: smooth; }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang TC', sans-serif;
+    color: var(--text);
+    background: var(--white);
+    overflow-x: hidden;
+  }
+
+  /* ── NAV ── */
+  nav {
+    position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 14px 48px;
+    background: rgba(255,255,255,0.88);
+    backdrop-filter: blur(12px);
+    border-bottom: 1px solid rgba(0,0,0,0.06);
+  }
+  .nav-logo { font-size: 17px; font-weight: 800; color: var(--dark-green); display: flex; align-items: center; gap: 8px; }
+  .nav-cta {
+    background: linear-gradient(135deg, var(--green), var(--dark-green));
+    color: #fff; padding: 9px 22px; border-radius: 24px;
+    font-size: 14px; font-weight: 600; text-decoration: none;
+    transition: opacity .15s, transform .15s;
+    box-shadow: 0 4px 14px rgba(0,176,155,.35);
+  }
+  .nav-cta:hover { opacity: .88; transform: translateY(-1px); }
+
+  /* ── HERO ── */
+  .hero {
+    min-height: 100vh;
+    background: linear-gradient(160deg, #e8f8f5 0%, #f9fdfc 50%, #fff 100%);
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    text-align: center; padding: 120px 24px 80px;
+    position: relative; overflow: hidden;
+  }
+  .hero::before {
+    content: '';
+    position: absolute; top: -200px; right: -200px;
+    width: 600px; height: 600px; border-radius: 50%;
+    background: radial-gradient(circle, rgba(0,176,155,.12) 0%, transparent 70%);
+    pointer-events: none;
+  }
+  .hero-badge {
+    display: inline-flex; align-items: center; gap: 6px;
+    background: rgba(0,176,155,.1); color: var(--dark-green);
+    padding: 5px 14px; border-radius: 20px; font-size: 13px; font-weight: 600;
+    border: 1px solid rgba(0,176,155,.25); margin-bottom: 28px;
+  }
+  .hero h1 {
+    font-size: clamp(36px, 6vw, 68px);
+    font-weight: 900; line-height: 1.12; letter-spacing: -1.5px;
+    margin-bottom: 20px;
+  }
+  .hero h1 span {
+    background: linear-gradient(135deg, var(--green), var(--dark-green));
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+  }
+  .hero-sub {
+    font-size: clamp(16px, 2.5vw, 20px); color: var(--muted);
+    max-width: 560px; line-height: 1.7; margin-bottom: 40px;
+  }
+  .hero-buttons { display: flex; gap: 14px; flex-wrap: wrap; justify-content: center; margin-bottom: 72px; }
+  .btn-primary {
+    background: linear-gradient(135deg, var(--green), var(--dark-green));
+    color: #fff; padding: 14px 32px; border-radius: 32px;
+    font-size: 16px; font-weight: 700; text-decoration: none;
+    box-shadow: 0 6px 20px rgba(0,176,155,.4);
+    transition: transform .15s, box-shadow .15s;
+  }
+  .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 10px 28px rgba(0,176,155,.45); }
+  .btn-secondary {
+    background: #fff; color: var(--dark-green);
+    padding: 14px 32px; border-radius: 32px;
+    font-size: 16px; font-weight: 600; text-decoration: none;
+    border: 2px solid rgba(0,176,155,.35);
+    transition: border-color .15s, transform .15s;
+  }
+  .btn-secondary:hover { border-color: var(--green); transform: translateY(-2px); }
+
+  /* ── DEMO MOCKUP ── */
+  .demo-wrap {
+    position: relative; width: 100%; max-width: 760px;
+    background: #fff; border-radius: 20px;
+    box-shadow: 0 24px 80px rgba(0,0,0,.12);
+    overflow: hidden; border: 1px solid #e8e8e8;
+  }
+  .demo-topbar {
+    background: #f5f5f5; padding: 11px 16px;
+    display: flex; align-items: center; gap: 7px;
+    border-bottom: 1px solid #eee;
+  }
+  .dot { width: 11px; height: 11px; border-radius: 50%; }
+  .dot.r { background: #ff5f57; } .dot.y { background: #febc2e; } .dot.g { background: #28c840; }
+  .demo-url { flex: 1; background: #fff; border-radius: 5px; padding: 4px 12px; font-size: 12px; color: #888; border: 1px solid #e0e0e0; margin: 0 8px; }
+  .demo-body { padding: 32px 36px; }
+  .demo-product-row { display: flex; align-items: center; gap: 24px; margin-bottom: 10px; }
+  .demo-img { width: 90px; height: 90px; border-radius: 10px; background: linear-gradient(135deg,#e8f5e9,#c8e6c9); display:flex;align-items:center;justify-content:center;font-size:44px;flex-shrink:0; }
+  .demo-info { flex:1; }
+  .demo-title { font-size: 15px; font-weight: 600; color: #333; margin-bottom: 14px; line-height:1.4; }
+  .demo-price-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .demo-price { font-size: 34px; font-weight: 900; color: #e53935; }
+  .etf-badge-demo {
+    display: inline-flex; align-items: center;
+    background: linear-gradient(135deg, var(--green), var(--dark-green));
+    color: #fff; font-size: 12px; font-weight: 700;
+    padding: 4px 11px; border-radius: 12px;
+    box-shadow: 0 2px 8px rgba(0,176,155,.4);
+    cursor: default;
+    animation: popIn .5s .8s both;
+  }
+  @keyframes popIn {
+    from { opacity:0; transform: scale(.7) translateY(4px); }
+    to   { opacity:1; transform: scale(1) translateY(0); }
+  }
+
+  /* Tooltip */
+  .tooltip-demo {
+    margin-top: 20px;
+    width: 260px; background: #fff;
+    border: 1px solid #e0e0e0; border-radius: 14px;
+    box-shadow: 0 12px 36px rgba(0,0,0,.13); overflow: hidden;
+    animation: slideUp .5s 1.1s both;
+  }
+  @keyframes slideUp {
+    from { opacity:0; transform: translateY(12px); }
+    to   { opacity:1; transform: translateY(0); }
+  }
+  .tip-hd {
+    background: linear-gradient(135deg, var(--green), var(--dark-green));
+    color:#fff; padding: 9px 14px;
+    display:flex; justify-content:space-between; align-items:flex-start;
+  }
+  .tip-name { font-size:13px; font-weight:700; }
+  .tip-code { font-size:10px; opacity:.75; margin-top:1px; }
+  .tip-px   { font-size:13px; font-weight:700; white-space:nowrap; padding-top:1px; }
+  .tip-bd   { padding: 10px 14px 9px; }
+  .tip-row  { display:flex; justify-content:space-between; align-items:baseline; margin-bottom:5px; font-size:12px; }
+  .tip-lbl  { color:#777; }
+  .tip-val  { font-weight:600; }
+  .tip-val.pos { color: var(--red); }
+  .tip-val.big { font-size:13px; font-weight:800; }
+  .tip-sub  { font-size:10px; color: var(--red); display:block; text-align:right; }
+  .divider  { border-top:1px solid #f0f0f0; margin: 7px 0; }
+  .tip-ft   { background:#fafafa; border-top:1px solid #f0f0f0; padding:5px 14px; font-size:10px; color:#bbb; text-align:right; }
+
+  /* ── FEATURES ── */
+  .section { padding: 96px 24px; }
+  .section-inner { max-width: 1080px; margin: 0 auto; }
+  .section-tag { display:inline-block; background:rgba(0,176,155,.1); color:var(--dark-green); font-size:12px; font-weight:700; padding:4px 12px; border-radius:20px; border:1px solid rgba(0,176,155,.2); margin-bottom:16px; }
+  .section-title { font-size: clamp(28px,4vw,42px); font-weight:800; letter-spacing:-0.5px; line-height:1.2; margin-bottom:14px; }
+  .section-sub { font-size:17px; color:var(--muted); max-width:540px; line-height:1.7; }
+
+  .features-grid { display:grid; grid-template-columns: repeat(auto-fit, minmax(280px,1fr)); gap:24px; margin-top:52px; }
+  .feat-card {
+    background: var(--white); border:1px solid #ebebeb; border-radius:18px;
+    padding: 28px 26px; transition: box-shadow .2s, transform .2s;
+  }
+  .feat-card:hover { box-shadow: 0 8px 32px rgba(0,0,0,.08); transform: translateY(-3px); }
+  .feat-icon { font-size:32px; margin-bottom:16px; }
+  .feat-title { font-size:16px; font-weight:700; margin-bottom:8px; }
+  .feat-desc  { font-size:14px; color:var(--muted); line-height:1.65; }
+
+  /* ── HOW IT WORKS ── */
+  .how-bg { background: var(--light); }
+  .steps { display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:0; margin-top:52px; counter-reset: step; }
+  .step {
+    position:relative; padding: 32px 28px;
+    counter-increment: step;
+  }
+  .step::before {
+    content: counter(step);
+    display:block; width:36px; height:36px; border-radius:50%;
+    background: linear-gradient(135deg,var(--green),var(--dark-green));
+    color:#fff; font-size:15px; font-weight:800;
+    display:flex; align-items:center; justify-content:center;
+    margin-bottom:16px;
+  }
+  .step-title { font-size:16px; font-weight:700; margin-bottom:8px; }
+  .step-desc  { font-size:14px; color:var(--muted); line-height:1.65; }
+  .step + .step::after {
+    content:'→'; position:absolute; left:-14px; top:38px;
+    font-size:20px; color:rgba(0,176,155,.35); font-weight:300;
+  }
+
+  /* ── TICKERS ── */
+  .tickers-row { display:flex; flex-wrap:wrap; gap:10px; margin-top:40px; }
+  .ticker-chip {
+    background:#fff; border:1.5px solid #e0e0e0; border-radius:20px;
+    padding:7px 16px; font-size:13px; font-weight:600; color:#444;
+    display:flex; flex-direction:column; align-items:center; gap:2px;
+  }
+  .ticker-chip small { font-size:10px; color:#aaa; font-weight:400; }
+  .ticker-chip.featured { border-color: var(--green); color: var(--dark-green); background: rgba(0,176,155,.06); }
+
+  /* ── DISCLAIMER ── */
+  .disclaimer { background:#fffbe6; border-top:1px solid #ffe58f; padding:24px; text-align:center; }
+  .disclaimer p { font-size:12px; color:#876800; max-width:720px; margin:0 auto; line-height:1.8; }
+
+  /* ── FOOTER ── */
+  footer {
+    background:#111; color:#888;
+    padding: 32px 48px;
+    display:flex; justify-content:space-between; align-items:center;
+    flex-wrap:wrap; gap:16px;
+  }
+  footer .logo { font-size:15px; font-weight:700; color:#fff; }
+  footer a { color:#aaa; text-decoration:none; font-size:13px; }
+  footer a:hover { color:#fff; }
+  .footer-links { display:flex; gap:24px; }
+
+  /* ── RESPONSIVE ── */
+  @media(max-width:600px){
+    nav { padding: 12px 20px; }
+    .hero { padding: 100px 20px 60px; }
+    .demo-body { padding:20px; }
+    .demo-price { font-size:26px; }
+    .step + .step::after { display:none; }
+    footer { padding: 24px 20px; }
+  }
+</style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav>
+  <div class="nav-logo">📈 ETF 價值換算</div>
+  <a class="nav-cta" href="https://chrome.google.com/webstore" target="_blank">免費安裝</a>
+</nav>
+
+<!-- HERO -->
+<section class="hero">
+  <div class="hero-badge">🛒 購物前的理性踩煞車</div>
+  <h1>每個價格標籤<br>都值幾股 <span>0050？</span></h1>
+  <p class="hero-sub">瀏覽任何購物網站時，自動在價格旁顯示等值 ETF 股數，以及這筆錢放著不動 3 個月和 1 年後的參考增值。</p>
+  <div class="hero-buttons">
+    <a class="btn-primary" href="https://chrome.google.com/webstore" target="_blank">🚀 加入 Chrome</a>
+    <a class="btn-secondary" href="https://github.com/guanwei-cmd/etf-price-extension" target="_blank">查看原始碼</a>
+  </div>
+
+  <!-- Live demo mockup -->
+  <div class="demo-wrap">
+    <div class="demo-topbar">
+      <div class="dot r"></div><div class="dot y"></div><div class="dot g"></div>
+      <div class="demo-url">🔒 store.apple.com/tw/product/macbook-air-m3</div>
+    </div>
+    <div class="demo-body">
+      <div class="demo-product-row">
+        <div class="demo-img">💻</div>
+        <div class="demo-info">
+          <div class="demo-title">Apple MacBook Air 13 吋 M3 晶片 ／ 8GB 記憶體 ／ 256GB SSD</div>
+          <div class="demo-price-row">
+            <span class="demo-price">NT$35,900</span>
+            <span class="etf-badge-demo">≈217.58股</span>
+          </div>
+        </div>
+      </div>
+      <div class="tooltip-demo">
+        <div class="tip-hd">
+          <div><div class="tip-name">元大台灣50</div><div class="tip-code">0050</div></div>
+          <div class="tip-px">NT$165.0</div>
+        </div>
+        <div class="tip-bd">
+          <div class="tip-row"><span class="tip-lbl">近1年年化報酬</span><span class="tip-val pos">+18.4%</span></div>
+          <div class="tip-row"><span class="tip-lbl">等值股數</span><span class="tip-val">217.576 股</span></div>
+          <div class="divider"></div>
+          <div class="tip-row"><span class="tip-lbl">3 個月後約</span><span class="tip-val big">NT$ 37,476<span class="tip-sub">+NT$ 1,576</span></span></div>
+          <div class="tip-row"><span class="tip-lbl">1 年後約</span><span class="tip-val big">NT$ 42,506<span class="tip-sub">+NT$ 6,606</span></span></div>
+        </div>
+        <div class="tip-ft">更新：5/5 下午09:29　・　歷史數據，非未來保證</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- FEATURES -->
+<section class="section">
+  <div class="section-inner">
+    <div class="section-tag">核心功能</div>
+    <h2 class="section-title">讓每一筆消費<br>都有機會成本意識</h2>
+    <p class="section-sub">安裝後立即生效，無需設定。在任何網站的任何價格旁自動出現。</p>
+    <div class="features-grid">
+      <div class="feat-card">
+        <div class="feat-icon">🌐</div>
+        <div class="feat-title">全站自動偵測</div>
+        <div class="feat-desc">PChome、momo、蝦皮、Shopee、博客來、Apple、Amazon⋯⋯任何購物網站都支援，包含 SPA 動態載入頁面。</div>
+      </div>
+      <div class="feat-card">
+        <div class="feat-icon">📊</div>
+        <div class="feat-title">即時 ETF 數據</div>
+        <div class="feat-desc">每小時自動從 Yahoo Finance 抓取最新股價與近一年年化報酬率，計算結果永遠保持最新。</div>
+      </div>
+      <div class="feat-card">
+        <div class="feat-icon">⚙️</div>
+        <div class="feat-title">自選比較標的</div>
+        <div class="feat-desc">內建 0050、0056、00878、006208、SPY、QQQ 六個快速選項，也可輸入任意台股或美股代號自訂。</div>
+      </div>
+      <div class="feat-card">
+        <div class="feat-icon">🎯</div>
+        <div class="feat-title">智慧過濾</div>
+        <div class="feat-desc">自動略過有刪除線的原價、巢狀重複元素，每個商品只顯示一個標籤，畫面乾淨不擁擠。</div>
+      </div>
+      <div class="feat-card">
+        <div class="feat-icon">🔒</div>
+        <div class="feat-title">完全零隱私疑慮</div>
+        <div class="feat-desc">不收集任何個人資料、不記錄瀏覽行為。所有偏好僅存在你的裝置，從不傳送至外部伺服器。</div>
+      </div>
+      <div class="feat-card">
+        <div class="feat-icon">🔘</div>
+        <div class="feat-title">一鍵開關</div>
+        <div class="feat-desc">Popup 面板頂部的開關可隨時停用所有標籤，不干擾正常購物流程，設定跨裝置同步。</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- HOW IT WORKS -->
+<section class="section how-bg">
+  <div class="section-inner">
+    <div class="section-tag">使用方式</div>
+    <h2 class="section-title">三步驟，開始理性購物</h2>
+    <div class="steps">
+      <div class="step">
+        <div class="step-title">安裝擴充功能</div>
+        <div class="step-desc">從 Chrome Web Store 免費安裝，無需註冊帳號，安裝後立即生效。</div>
+      </div>
+      <div class="step">
+        <div class="step-title">照常瀏覽購物網站</div>
+        <div class="step-desc">開啟任何購物頁面，系統自動偵測所有價格並在旁邊加上綠色標籤。</div>
+      </div>
+      <div class="step">
+        <div class="step-title">滑鼠懸停看詳情</div>
+        <div class="step-desc">懸停在標籤上展開面板，查看等值股數、3 個月後與 1 年後的參考增值。</div>
+      </div>
+      <div class="step">
+        <div class="step-title">自訂比較標的</div>
+        <div class="step-desc">點擊右上角 Popup，從預設 ETF 或輸入任意代號，切換後全頁即時更新。</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- SUPPORTED TICKERS -->
+<section class="section">
+  <div class="section-inner">
+    <div class="section-tag">支援標的</div>
+    <h2 class="section-title">不只 0050</h2>
+    <p class="section-sub">內建熱門標的快速切換，或輸入任意 Yahoo Finance 支援的代號——台股、美股、ETF 均可。</p>
+    <div class="tickers-row">
+      <div class="ticker-chip featured">0050<small>元大台灣50</small></div>
+      <div class="ticker-chip featured">0056<small>元大高股息</small></div>
+      <div class="ticker-chip featured">00878<small>國泰永續高股息</small></div>
+      <div class="ticker-chip featured">006208<small>富邦台50</small></div>
+      <div class="ticker-chip featured">SPY<small>S&amp;P 500</small></div>
+      <div class="ticker-chip featured">QQQ<small>那斯達克100</small></div>
+      <div class="ticker-chip">2330<small>台積電</small></div>
+      <div class="ticker-chip">NVDA<small>輝達</small></div>
+      <div class="ticker-chip">VOO<small>Vanguard S&amp;P 500</small></div>
+      <div class="ticker-chip">00929<small>復華台灣科技優息</small></div>
+      <div class="ticker-chip" style="border-style:dashed">自訂代號…</div>
+    </div>
+  </div>
+</section>
+
+<!-- DISCLAIMER -->
+<div class="disclaimer">
+  <p>⚠️ <strong>免責聲明：</strong>本工具所有數據均來自 Yahoo Finance 歷史股價資料，所有推估金額係依過去一年報酬率進行機械式計算，<strong>僅供參考，不代表未來實際報酬</strong>。過去績效不保證未來結果，市場價格可能上漲或下跌。本工具任何內容均不構成投資建議、買賣有價證券之邀約或推薦，使用者應自行評估風險並為投資決策負責。</p>
+</div>
+
+<!-- FOOTER -->
+<footer>
+  <div class="logo">📈 ETF 價值換算</div>
+  <div class="footer-links">
+    <a href="https://github.com/guanwei-cmd/etf-price-extension" target="_blank">GitHub</a>
+    <a href="privacy.html">隱私權政策</a>
+    <a href="https://chrome.google.com/webstore" target="_blank">Chrome Web Store</a>
+  </div>
+</footer>
+
+</body>
+</html>
